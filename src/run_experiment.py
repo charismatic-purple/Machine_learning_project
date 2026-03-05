@@ -18,6 +18,13 @@ from src.generate_dataset import SyntheticDatasetConfig, generate_intrinsic_gaus
 from src.embed_data import AmbientEmbeddingConfig, embed_to_ambient
 from src.models import train_and_eval_logreg, train_and_eval_linear_svm, train_and_eval_knn
 
+from src.nn_trainers import (
+    NNTrainConfig,
+    train_eval_mlp_baseline,
+    train_eval_mlp_regularized,
+    train_eval_mlp_wide,
+)
+
 
 @dataclass(frozen=True)
 class ExperimentConfig:
@@ -47,6 +54,10 @@ class ExperimentConfig:
 
     test_size: float = 0.2
     seeds: tuple[int, ...] = tuple(range(20))
+
+    run_neural_nets: bool = True
+    nn_train_cfg: NNTrainConfig = NNTrainConfig()
+    nn_seed_offset: int = 5000  # decouple NN randomness from dataset/PCA seeds
 
     results_path: str = "../results/raw/experiment_results.csv"
 
@@ -249,7 +260,98 @@ def run_experiment(cfg: ExperimentConfig) -> pd.DataFrame:
                     "far_mean": conc["far_mean"],
                     "distance_contrast": conc["contrast"],
                 })
+                # 6) Train + evaluate Neural Networks (optional)
+                if cfg.run_neural_nets:
+                    nn_seed = seed + cfg.nn_seed_offset + d_obs + (10 * d_star)
 
+                    # Baseline MLP
+                    out_base = train_eval_mlp_baseline(
+                        X_train=Xtr, y_train=y_train,
+                        X_test=Xte, y_test=y_test,
+                        seed=nn_seed,
+                        cfg=cfg.nn_train_cfg
+                    )
+                    rows.append({
+                        "seed": seed,
+                        "intrinsic_dim": d_star,
+                        "delta": delta,
+                        "ambient_dim": cfg.ambient_dim,
+                        "noise_sigma": cfg.noise_sigma,
+                        "observed_dim": d_obs,
+                        "model": out_base["model"],
+                        "train_accuracy": out_base["train_accuracy"],
+                        "test_accuracy": out_base["test_accuracy"],
+                        "generalization_gap": out_base["generalization_gap"],
+                        "best_val_accuracy": out_base["best_val_accuracy"],
+                        "best_epoch": out_base["best_epoch"],
+                        "pca_explained_var": explained,
+                        "pca_total_var": total_var,
+                        "pca_remaining_var": remaining,
+                        "snr_proxy": snr_proxy,
+                        "nn_mean": conc["nn_mean"],
+                        "far_mean": conc["far_mean"],
+                        "distance_contrast": conc["contrast"],
+                    })
+
+                    # Regularized MLP
+                    out_reg = train_eval_mlp_regularized(
+                        X_train=Xtr, y_train=y_train,
+                        X_test=Xte, y_test=y_test,
+                        seed=nn_seed + 1,
+                        cfg=cfg.nn_train_cfg,
+                        dropout=0.2,
+                        weight_decay=1e-4
+                    )
+                    rows.append({
+                        "seed": seed,
+                        "intrinsic_dim": d_star,
+                        "delta": delta,
+                        "ambient_dim": cfg.ambient_dim,
+                        "noise_sigma": cfg.noise_sigma,
+                        "observed_dim": d_obs,
+                        "model": out_reg["model"],
+                        "train_accuracy": out_reg["train_accuracy"],
+                        "test_accuracy": out_reg["test_accuracy"],
+                        "generalization_gap": out_reg["generalization_gap"],
+                        "best_val_accuracy": out_reg["best_val_accuracy"],
+                        "best_epoch": out_reg["best_epoch"],
+                        "pca_explained_var": explained,
+                        "pca_total_var": total_var,
+                        "pca_remaining_var": remaining,
+                        "snr_proxy": snr_proxy,
+                        "nn_mean": conc["nn_mean"],
+                        "far_mean": conc["far_mean"],
+                        "distance_contrast": conc["contrast"],
+                    })
+
+                    # Wide MLP
+                    out_wide = train_eval_mlp_wide(
+                        X_train=Xtr, y_train=y_train,
+                        X_test=Xte, y_test=y_test,
+                        seed=nn_seed + 2,
+                        cfg=cfg.nn_train_cfg
+                    )
+                    rows.append({
+                        "seed": seed,
+                        "intrinsic_dim": d_star,
+                        "delta": delta,
+                        "ambient_dim": cfg.ambient_dim,
+                        "noise_sigma": cfg.noise_sigma,
+                        "observed_dim": d_obs,
+                        "model": out_wide["model"],
+                        "train_accuracy": out_wide["train_accuracy"],
+                        "test_accuracy": out_wide["test_accuracy"],
+                        "generalization_gap": out_wide["generalization_gap"],
+                        "best_val_accuracy": out_wide["best_val_accuracy"],
+                        "best_epoch": out_wide["best_epoch"],
+                        "pca_explained_var": explained,
+                        "pca_total_var": total_var,
+                        "pca_remaining_var": remaining,
+                        "snr_proxy": snr_proxy,
+                        "nn_mean": conc["nn_mean"],
+                        "far_mean": conc["far_mean"],
+                        "distance_contrast": conc["contrast"],
+                    })
 
     df = pd.DataFrame(rows)
     df.to_csv(cfg.results_path, index=False)

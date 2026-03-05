@@ -208,6 +208,55 @@ def plot_combined_three_curves(
     plt.close()
 
 
+def plot_all_models_mean_curve_from_raw(
+        df_raw: pd.DataFrame,
+        y_col: str,
+        ylabel: str,
+        title: str,
+        output_path: str,
+        filter_intrinsic_dim: int | None = None,
+) -> None:
+    """
+    Plot mean metric vs observed_dim with one curve per model,
+    aggregated across seeds. Optionally filter to a single intrinsic_dim.
+
+    This is the full-run version of the smoke-test diagnostic plots.
+    """
+    ensure_dir(os.path.dirname(output_path))
+
+    df = df_raw.copy()
+
+    if filter_intrinsic_dim is not None:
+        df = df[df["intrinsic_dim"] == filter_intrinsic_dim]
+
+    if df.empty:
+        raise ValueError("No data available for the requested filter settings.")
+
+    summary = (
+        df.groupby(["observed_dim", "model"], dropna=False)[y_col]
+        .agg(["mean", "std", "count"])
+        .reset_index()
+        .sort_values(["model", "observed_dim"])
+    )
+
+    plt.figure()
+    for model in sorted(summary["model"].unique()):
+        sub = summary[summary["model"] == model].sort_values("observed_dim")
+        plt.plot(sub["observed_dim"], sub["mean"], marker="o", label=model)
+
+    xlabel = "Observed dimension (after PCA)"
+    if filter_intrinsic_dim is not None:
+        xlabel += f"  (intrinsic d*={filter_intrinsic_dim})"
+
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.title(title)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300)
+    plt.close()
+
+
 def run_phase5(cfg: AnalysisConfig) -> None:
     """Run Phase 5 end-to-end: load -> aggregate -> save -> plot."""
     df_raw = load_results(cfg.raw_results_path)
@@ -293,6 +342,25 @@ def run_phase5(cfg: AnalysisConfig) -> None:
         ylabel="Distance contrast (relative)",
         title="Curse of dimensionality: distance concentration vs dimension",
         output_path=os.path.join(cfg.figures_dir, "distance_contrast_vs_dimension.png")
+    )
+
+    # Full-run: "smoke-style" plots (all models on one axis), aggregated across seeds
+    plot_all_models_mean_curve_from_raw(
+        df_raw=df_raw,
+        y_col="test_accuracy",
+        ylabel="Mean test accuracy",
+        title="Full experiment: Accuracy vs observed dimension (all models)",
+        output_path=os.path.join(cfg.figures_dir, "accuracy_vs_dimension_all_models.png"),
+        filter_intrinsic_dim=None,  # aggregate across all intrinsic dims
+    )
+
+    plot_all_models_mean_curve_from_raw(
+        df_raw=df_raw,
+        y_col="generalization_gap",
+        ylabel="Mean generalization gap (train - test)",
+        title="Full experiment: Generalization gap vs observed dimension (all models)",
+        output_path=os.path.join(cfg.figures_dir, "generalization_gap_vs_dimension_all_models.png"),
+        filter_intrinsic_dim=None,
     )
 
 
