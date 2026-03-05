@@ -209,18 +209,20 @@ def plot_combined_three_curves(
 
 
 def plot_all_models_mean_curve_from_raw(
-        df_raw: pd.DataFrame,
-        y_col: str,
-        ylabel: str,
-        title: str,
-        output_path: str,
-        filter_intrinsic_dim: int | None = None,
+    df_raw: pd.DataFrame,
+    y_col: str,
+    ylabel: str,
+    title: str,
+    output_path: str,
+    ci_z: float = 1.96,
+    filter_intrinsic_dim: int | None = None,
 ) -> None:
     """
-    Plot mean metric vs observed_dim with one curve per model,
+    Plot mean metric vs observed_dim with one curve per model, including 95% CI bands,
     aggregated across seeds. Optionally filter to a single intrinsic_dim.
 
-    This is the full-run version of the smoke-test diagnostic plots.
+    This is the full-run version of the smoke-style comparison plots, but suitable for
+    the paper because it includes confidence intervals.
     """
     ensure_dir(os.path.dirname(output_path))
 
@@ -234,15 +236,27 @@ def plot_all_models_mean_curve_from_raw(
 
     summary = (
         df.groupby(["observed_dim", "model"], dropna=False)[y_col]
-        .agg(["mean", "std", "count"])
+        .agg(mean="mean", std="std", n="count")
         .reset_index()
         .sort_values(["model", "observed_dim"])
     )
 
+    # Replace NaN std (happens when n=1) with 0.0
+    summary["std"] = summary["std"].fillna(0.0)
+    summary["se"] = summary["std"] / np.sqrt(summary["n"])
+    summary["ci_low"] = summary["mean"] - ci_z * summary["se"]
+    summary["ci_high"] = summary["mean"] + ci_z * summary["se"]
+
     plt.figure()
     for model in sorted(summary["model"].unique()):
         sub = summary[summary["model"] == model].sort_values("observed_dim")
-        plt.plot(sub["observed_dim"], sub["mean"], marker="o", label=model)
+        x = sub["observed_dim"].to_numpy()
+        y = sub["mean"].to_numpy()
+        lo = sub["ci_low"].to_numpy()
+        hi = sub["ci_high"].to_numpy()
+
+        plt.fill_between(x, lo, hi, alpha=0.2)
+        plt.plot(x, y, marker="o", label=model)
 
     xlabel = "Observed dimension (after PCA)"
     if filter_intrinsic_dim is not None:
@@ -261,28 +275,6 @@ def run_phase5(cfg: AnalysisConfig) -> None:
     """Run Phase 5 end-to-end: load -> aggregate -> save -> plot."""
     df_raw = load_results(cfg.raw_results_path)
     df_summary = aggregate_results(df_raw, ci_z=cfg.ci_z)
-
-
-
-    df_summary = pd.read_csv("../results/aggregated/results_summary.csv")
-
-    print("Columns:", df_summary.columns.tolist())
-    print("Unique models:", df_summary["model"].unique())
-    print("Unique intrinsic dims:", df_summary["intrinsic_dim"].unique())
-    print("Unique observed dims:", df_summary["observed_dim"].unique())
-
-    # Check whether contrast columns exist and are non-null
-    contrast_cols = [c for c in df_summary.columns if "contrast" in c]
-    print("Contrast-related columns:", contrast_cols)
-
-    if "contrast_mean" in df_summary.columns:
-        print("Non-null contrast_mean rows:", df_summary["contrast_mean"].notna().sum())
-
-    # Check if the model you plotted actually exists
-    target_model = "logreg"  # or whatever you passed into plot_combined_three_curves
-    print("Rows for model:", target_model, "=>", (df_summary["model"] == target_model).sum())
-
-
 
     save_summary(df_summary, cfg.summary_path)
 
@@ -349,8 +341,9 @@ def run_phase5(cfg: AnalysisConfig) -> None:
         df_raw=df_raw,
         y_col="test_accuracy",
         ylabel="Mean test accuracy",
-        title="Full experiment: Accuracy vs observed dimension (all models)",
+        title="Accuracy vs observed dimension (all models)",
         output_path=os.path.join(cfg.figures_dir, "accuracy_vs_dimension_all_models.png"),
+        ci_z=cfg.ci_z,
         filter_intrinsic_dim=None,  # aggregate across all intrinsic dims
     )
 
@@ -358,10 +351,32 @@ def run_phase5(cfg: AnalysisConfig) -> None:
         df_raw=df_raw,
         y_col="generalization_gap",
         ylabel="Mean generalization gap (train - test)",
-        title="Full experiment: Generalization gap vs observed dimension (all models)",
+        title="Generalization gap vs observed dimension (all models)",
         output_path=os.path.join(cfg.figures_dir, "generalization_gap_vs_dimension_all_models.png"),
+        ci_z=cfg.ci_z,
         filter_intrinsic_dim=None,
     )
+
+    for d_star in sorted(df_raw["intrinsic_dim"].unique()):
+        plot_all_models_mean_curve_from_raw(
+            df_raw=df_raw,
+            y_col="test_accuracy",
+            ylabel="Mean test accuracy",
+            title=f"Accuracy vs observed dimension (all models), d*={d_star}",
+            output_path=os.path.join(cfg.figures_dir, f"accuracy_vs_dimension_all_models_dstar_{d_star}.png"),
+            ci_z=cfg.ci_z,
+            filter_intrinsic_dim=int(d_star),
+        )
+
+        plot_all_models_mean_curve_from_raw(
+            df_raw=df_raw,
+            y_col="generalization_gap",
+            ylabel="Mean generalization gap (train - test)",
+            title=f"Generalization gap vs observed dimension (all models), d*={d_star}",
+            output_path=os.path.join(cfg.figures_dir, f"generalization_gap_vs_dimension_all_models_dstar_{d_star}.png"),
+            ci_z=cfg.ci_z,
+            filter_intrinsic_dim=int(d_star),
+        )
 
 
     print(f"Saved summary CSV to: {cfg.summary_path}")
