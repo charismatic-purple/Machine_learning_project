@@ -1,0 +1,17 @@
+\begin{table}[h]
+\centering
+\begin{tabular}{lccc}
+\toprule
+\textbf{Model} & \textbf{$d^*=64$} & \textbf{$d^*=256$} & \textbf{$d^*=768$} \\
+\midrule
+kNN ($k=11$) & 0.0005 & 0.0006 & 0.0004 \\
+Linear SVM & 0.0008 & 0.0005 & 0.0005 \\
+Logistic Regression & 0.0008 & 0.0005 & 0.0005 \\
+MLP Base & 0.0009 & 0.0004 & 0.0005 \\
+MLP Regularized & 0.0007 & 0.0004 & 0.0004 \\
+MLP Wide & 0.0008 & 0.0004 & 0.0005 \\
+\bottomrule
+\end{tabular}
+\caption{Average sensitivity of test accuracy to changes in observed dimensionality for each model and intrinsic dimension.}
+\label{tab:sensitivity}
+\end{table}

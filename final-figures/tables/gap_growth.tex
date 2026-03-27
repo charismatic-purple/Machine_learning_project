@@ -1,0 +1,17 @@
+\begin{table}[h]
+\centering
+\begin{tabular}{lccc}
+\toprule
+\textbf{Model} & \textbf{$d^*=64$} & \textbf{$d^*=256$} & \textbf{$d^*=768$} \\
+\midrule
+kNN ($k=11$) & 0.060 & 0.048 & 0.036 \\
+Linear SVM & 0.357 & 0.297 & 0.267 \\
+Logistic Regression & 0.349 & 0.296 & 0.264 \\
+MLP Base & 0.391 & 0.342 & 0.289 \\
+MLP Regularized & 0.366 & 0.325 & 0.276 \\
+MLP Wide & 0.389 & 0.343 & 0.278 \\
+\bottomrule
+\end{tabular}
+\caption{Growth of the generalization gap from the smallest to the largest observed dimensionality for each model and intrinsic dimension.}
+\label{tab:gap_growth}
+\end{table}

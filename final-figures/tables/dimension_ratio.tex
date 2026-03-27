@@ -1,0 +1,17 @@
+\begin{table}[h]
+\centering
+\begin{tabular}{lccc}
+\toprule
+\textbf{Model} & \textbf{$d^*=64$} & \textbf{$d^*=256$} & \textbf{$d^*=768$} \\
+\midrule
+kNN ($k=11$) & 0.25 & 0.06 & 0.02 \\
+Linear SVM & 1.00 & 1.00 & 0.33 \\
+Logistic Regression & 1.00 & 1.00 & 0.33 \\
+MLP Base & 1.00 & 1.00 & 0.33 \\
+MLP Regularized & 1.00 & 1.00 & 0.67 \\
+MLP Wide & 1.00 & 1.00 & 0.33 \\
+\bottomrule
+\end{tabular}
+\caption{Ratio between optimal observed dimensionality and intrinsic dimensionality ($d_{\mathrm{opt}} / d^*$) for each model.}
+\label{tab:dimension_ratio}
+\end{table}

@@ -1,0 +1,17 @@
+\begin{table}[h]
+\centering
+\begin{tabular}{lccc}
+\toprule
+\textbf{Model} & \textbf{$d^*=64$} & \textbf{$d^*=256$} & \textbf{$d^*=768$} \\
+\midrule
+kNN ($k=11$) & 16 (-48) & 16 (-240) & 16 (-752) \\
+Linear SVM & 64 (0) & 256 (0) & 256 (-512) \\
+Logistic Regression & 64 (0) & 256 (0) & 256 (-512) \\
+MLP Base & 64 (0) & 256 (0) & 256 (-512) \\
+MLP Regularized & 64 (0) & 256 (0) & 512 (-256) \\
+MLP Wide & 64 (0) & 256 (0) & 256 (-512) \\
+\bottomrule
+\end{tabular}
+\caption{Optimal observed dimensionality (with dimension error in parentheses) for each model across intrinsic dimensionalities. The value in parentheses indicates $d_{\mathrm{opt}} - d^*$, where negative values mean the optimal representation is lower than the intrinsic dimensionality.}
+\label{tab:optimal_dimension_combined}
+\end{table}
